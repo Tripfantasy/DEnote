@@ -24,7 +24,7 @@ git clone https://github.com/Tripfantasy/DEnote.git
 packages <- c("shiny", "bslib", "Seurat", "plotly", "DT", "ggplot2", 
               "ggrepel", "dplyr", "shinycssloaders", "shinyjs", 
               "rmarkdown", "scales", "RColorBrewer", "tidyr", 
-              "tibble", "thematic")
+              "tibble", "thematic","bsicons")
 
 install_if_missing <- function(p) {
   if (!requireNamespace(p, quietly = TRUE)) install.packages(p)
