@@ -1,6 +1,8 @@
 # DEnote
 Interactive cell labelling for scRNA-seq data. Built to make a key stage in scRNA-seq analysis accessible to non-bioinformaticians. 
 
+**Note:** DEnote was created while benchmarking / experimenting with Posit AI. 
+
 ## Functionality
 - Supports Seurat (.rds) or 10x (.h5) files
 - Performs Leiden or Louvain clustering
