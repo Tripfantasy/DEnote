@@ -37,7 +37,7 @@ source("modules/mod_report.R")
 ui <- page_navbar(
   title = tags$span(
     style = "font-weight: 700; letter-spacing: 0.5px;",
-    bsicons::bs_icon("diagram-3-fill"), " DEnote: Visually Guided Cell Labeller"
+    bsicons::bs_icon("diagram-3-fill"), " DEnote: Visually Guided Cell Labeler"
   ),
   theme = bs_theme(
     version    = 5,
