@@ -1,0 +1,23 @@
+
+
+
+.navbar { padding-top: 0.4rem; padding-bottom: 0.4rem; }
+
+
+.card-header { font-weight: 600; font-size: 0.9rem; }
+
+
+.bslib-value-box .value-box-title { font-size: 0.75rem; }
+.bslib-value-box .value-box-value { font-size: 1.4rem; }
+
+
+.shiny-spinner-output-container { min-height: 80px; }
+
+
+.alert { font-size: 0.875rem; padding: 0.5rem 0.75rem; }
+
+
+table.dataTable { font-size: 0.85rem; }
+
+
+.form-label, label { font-size: 0.85rem; margin-bottom: 2px; }

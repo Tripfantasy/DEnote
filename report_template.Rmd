@@ -1,0 +1,168 @@
+---
+title: "Cell Labelling Report"
+date: "`r format(Sys.Date(), '%B %d, %Y')`"
+output:
+  html_document:
+    theme: flatly
+    toc: true
+    toc_float: true
+    fig_width: 10
+    fig_height: 6
+params:
+  labels: NULL
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE)
+library(Seurat)
+library(ggplot2)
+library(dplyr)
+library(knitr)
+library(kableExtra)
+library(ggrepel)
+source("helpers/processing.R")
+source("helpers/plotting.R")
+```
+
+```{r load-data}
+# obj and markers are injected via the render environment from the Shiny session,
+# so no slow RDS round-trip is needed. params$labels carries the label map.
+labels <- params$labels
+
+cluster_col <- active_cluster_col(obj)
+has_manual  <- "manual_label" %in% colnames(obj@meta.data)
+has_module  <- "predicted_celltype" %in% colnames(obj@meta.data)
+has_markers <- !is.null(markers) && nrow(markers) > 0
+```
+
+## Overview
+
+```{r summary-stats}
+n_cells    <- ncol(obj)
+n_clusters <- length(unique(obj@meta.data[[cluster_col]]))
+assays     <- paste(Assays(obj), collapse = ", ")
+
+data.frame(
+  Metric  = c("Total cells", "Clusters", "Assays"),
+  Value   = c(scales::comma(n_cells), n_clusters, assays)
+) |>
+  kbl(col.names = c("", "")) |>
+  kable_styling(bootstrap_options = c("striped", "condensed"), full_width = FALSE)
+```
+
+---
+
+## Cluster Visualisation
+
+### Unlabelled Clusters
+
+```{r umap-clusters, fig.height=6}
+red <- if ("umap" %in% names(obj@reductions)) "umap" else available_reductions(obj)[1]
+umap_ggplot(obj, color_by = cluster_col, reduction = red,
+            title = "Seurat Clusters") +
+  theme(legend.position = "right")
+```
+
+### Labelled Clusters
+
+```{r umap-labels, fig.height=6}
+if (has_manual) {
+  umap_ggplot(obj, color_by = "manual_label", reduction = red,
+              title = "Manual Cell Type Labels") +
+    theme(legend.position = "right")
+} else if (has_module) {
+  umap_ggplot(obj, color_by = "predicted_celltype", reduction = red,
+              title = "Module Score Predicted Cell Types") +
+    theme(legend.position = "right")
+} else {
+  cat("No cell type labels have been assigned.")
+}
+```
+
+---
+
+## Cluster – Cell Type Assignments
+
+```{r assignment-table}
+df <- data.frame(
+  Cluster   = sort(unique(as.character(obj@meta.data[[cluster_col]]))),
+  N_Cells   = as.integer(table(obj@meta.data[[cluster_col]])[
+                sort(unique(as.character(obj@meta.data[[cluster_col]])))])
+)
+
+if (has_manual) {
+  manual_top <- tapply(obj@meta.data$manual_label,
+                       obj@meta.data[[cluster_col]],
+                       function(x) names(sort(table(x), decreasing = TRUE))[1])
+  df$Manual_Label <- manual_top[df$Cluster]
+}
+
+if (has_module) {
+  module_top <- tapply(obj@meta.data$predicted_celltype,
+                       obj@meta.data[[cluster_col]],
+                       function(x) names(sort(table(x), decreasing = TRUE))[1])
+  df$Module_Score_Label <- module_top[df$Cluster]
+}
+
+if (has_markers) {
+  top5 <- markers |>
+    group_by(cluster) |>
+    slice_max(order_by = avg_log2FC, n = 5, with_ties = FALSE) |>
+    summarise(Top_Markers = paste(gene, collapse = ", "), .groups = "drop")
+  df <- left_join(df, top5, by = c("Cluster" = "cluster"))
+}
+
+df |>
+  kbl(col.names = gsub("_", " ", colnames(df))) |>
+  kable_styling(bootstrap_options = c("striped", "hover", "condensed"),
+                full_width = TRUE) |>
+  scroll_box(height = "400px")
+```
+
+---
+
+## De Novo Markers Per Cluster
+
+```{r markers-section, results='asis'}
+if (!has_markers) {
+  cat("> No marker analysis was performed in this session.\n")
+} else {
+  clusters <- sort(unique(as.character(markers$cluster)))
+  for (cl in clusters) {
+    cl_markers <- markers |>
+      filter(cluster == cl) |>
+      slice_max(order_by = avg_log2FC, n = 20, with_ties = FALSE) |>
+      select(gene, avg_log2FC, pct.1, pct.2, p_val_adj)
+
+    label <- if (has_manual) {
+      top_label <- names(sort(table(obj@meta.data$manual_label[
+        obj@meta.data[[cluster_col]] == cl]), decreasing = TRUE))[1]
+      paste0("Cluster ", cl, " — ", top_label)
+    } else {
+      paste0("Cluster ", cl)
+    }
+
+    cat(paste0("\n\n### ", label, "\n\n"))
+    print(
+      cl_markers |>
+        mutate(
+          avg_log2FC = round(avg_log2FC, 3),
+          pct.1      = round(pct.1, 3),
+          pct.2      = round(pct.2, 3),
+          p_val_adj  = formatC(p_val_adj, format = "e", digits = 2)
+        ) |>
+        kbl() |>
+        kable_styling(bootstrap_options = c("striped", "condensed"),
+                      full_width = FALSE)
+    )
+  }
+}
+```
+
+---
+
+## Session Information
+
+```{r session-info}
+sessionInfo()
+```
